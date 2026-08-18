@@ -28,6 +28,16 @@ Renewal and bill deadline tracker built as an npm workspaces monorepo. apps/web 
 
 Root scripts delegate to workspaces via `npm run <script> -w <workspace>`.
 
-| Command                                | Description |
-| -------------------------------------- | ----------- |
-| (to be filled in as scripts are added) |             |
+| Command              | Description                                        |
+| -------------------- | -------------------------------------------------- |
+| `npm run dev`        | Start both API and web servers in parallel         |
+| `npm run dev:api`    | Start API server only                              |
+| `npm run dev:web`    | Start web dev server only                          |
+| `npm run build`      | Build shared package, then API and web in parallel |
+| `npm run typecheck`  | Type-check all workspaces                          |
+| `npm run test`       | Run unit tests in all workspaces                   |
+| `npm run test:e2e`   | Run Playwright end-to-end tests                    |
+| `npm run lint`       | Lint all files with ESLint                         |
+| `npm run lint:fix`   | Lint and auto-fix issues                           |
+| `npm run format`     | Format all files with Prettier                     |
+| `npm run format:check` | Check formatting without changes                   |
