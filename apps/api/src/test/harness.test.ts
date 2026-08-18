@@ -63,4 +63,14 @@ describe("Integration test harness", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok" });
   });
+
+  it("asUser helper attaches valid session to requests", async () => {
+    const user = await createTestUser();
+    const client = buildTestClient();
+
+    const response = await client.asUser(user).get("/api/test/protected");
+
+    expect(response.status).toBe(200);
+    expect(response.body.userId).toBe(user.id);
+  });
 });
