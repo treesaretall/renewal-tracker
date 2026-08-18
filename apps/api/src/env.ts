@@ -13,6 +13,7 @@ const envSchema = z.object({
   MAX_UPLOAD_MB: z.coerce.number().default(10),
   WEB_ORIGIN: z.string().default("http://localhost:5173"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().default(10),
 });
 
 const result = envSchema.safeParse(process.env);

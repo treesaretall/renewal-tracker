@@ -8,6 +8,7 @@ import {
 import { db } from '../db.js';
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { authRateLimit } from '../middleware/rateLimit.js';
 import { ApiError } from '../errors.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import {
@@ -21,7 +22,7 @@ import { sendParsed } from '../lib/respond.js';
 
 export const authRouter = Router();
 
-authRouter.post('/signup', validate({ body: signupSchema }), async (req, res) => {
+authRouter.post('/signup', authRateLimit, validate({ body: signupSchema }), async (req, res) => {
   const { email, password } = req.body;
 
   // Check for duplicate email
@@ -83,7 +84,7 @@ authRouter.post('/signup', validate({ body: signupSchema }), async (req, res) =>
   );
 });
 
-authRouter.post('/login', validate({ body: loginSchema }), async (req, res) => {
+authRouter.post('/login', authRateLimit, validate({ body: loginSchema }), async (req, res) => {
   const { email, password } = req.body;
 
   const user = await db.user.findUnique({ where: { email } });

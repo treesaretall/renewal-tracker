@@ -41,3 +41,14 @@ Root scripts delegate to workspaces via `npm run <script> -w <workspace>`.
 | `npm run lint:fix`   | Lint and auto-fix issues                           |
 | `npm run format`     | Format all files with Prettier                     |
 | `npm run format:check` | Check formatting without changes                   |
+
+## Environment Variables
+
+Configured in `.env` (see `.env.example` for template):
+
+- `DATABASE_URL`: SQLite database file path
+- `PORT`: API server port (default: 3001)
+- `SESSION_TTL_DAYS`: Session expiry in days (default: 30)
+- `MAX_UPLOAD_MB`: Maximum file upload size (default: 10)
+- `WEB_ORIGIN`: Frontend origin for CORS (default: http://localhost:5173)
+- `AUTH_RATE_LIMIT_MAX`: Maximum auth attempts per IP+email in 15 minutes (default: 10)

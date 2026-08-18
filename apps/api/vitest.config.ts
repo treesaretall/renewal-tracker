@@ -11,6 +11,7 @@ export default defineConfig({
       SESSION_TTL_DAYS: "30",
       MAX_UPLOAD_MB: "10",
       NODE_ENV: "test",
+      AUTH_RATE_LIMIT_MAX: "1000",
     },
   },
 });

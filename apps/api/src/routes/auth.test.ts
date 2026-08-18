@@ -214,3 +214,23 @@ describe('POST /api/auth/logout', () => {
     expect(res.status).toBe(204);
   });
 });
+
+describe('Rate limiting', () => {
+  it('does not interfere with normal authentication flow', async () => {
+    // Rate limiting is applied but with a high limit in test env (AUTH_RATE_LIMIT_MAX=1000).
+    // This test verifies it doesn't break normal operation.
+    // See rateLimit.test.ts for detailed rate limit behavior tests.
+    const client = buildTestClient();
+
+    const testEmail = `ratelimit-${Date.now()}@example.com`;
+
+    const res = await client.post('/api/auth/login').send({
+      email: testEmail,
+      password: 'wrong-password-123',
+    });
+
+    // Should get 401 for wrong password, not 429
+    expect(res.status).toBe(401);
+    expect(res.body.code).toBe(API_ERROR_CODES.UNAUTHENTICATED);
+  });
+});
