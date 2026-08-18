@@ -28,6 +28,6 @@ Renewal and bill deadline tracker built as an npm workspaces monorepo. apps/web 
 
 Root scripts delegate to workspaces via `npm run <script> -w <workspace>`.
 
-| Command | Description |
-|---------|-------------|
-| (to be filled in as scripts are added) | |
+| Command                                | Description |
+| -------------------------------------- | ----------- |
+| (to be filled in as scripts are added) |             |
