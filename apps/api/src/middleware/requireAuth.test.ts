@@ -43,7 +43,7 @@ describe('requireAuth middleware', () => {
       where: { userId: testUser.id },
     });
     await db.session.update({
-      where: { id: allSessions[0].id },
+      where: { id: allSessions[0]!.id },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 

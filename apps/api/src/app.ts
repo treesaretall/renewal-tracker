@@ -4,6 +4,7 @@ import { db } from "./db.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireAuth } from "./middleware/requireAuth.js";
+import { authRouter } from "./routes/auth.js";
 
 export function createApp() {
   const app = express();
@@ -19,6 +20,8 @@ export function createApp() {
     await db.user.findMany({ take: 1 });
     res.json({ db: "ok" });
   });
+
+  app.use("/api/auth", authRouter);
 
   app.get("/api/test/protected", requireAuth, (req, res) => {
     res.json({ userId: req.user!.id });

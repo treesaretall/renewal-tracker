@@ -15,9 +15,9 @@ export type ValidatedRequest<
 };
 
 interface ValidationSchemas {
-  body?: z.ZodSchema;
-  query?: z.ZodSchema;
-  params?: z.ZodSchema;
+  body?: { parseAsync: (value: unknown) => Promise<unknown> };
+  query?: { parseAsync: (value: unknown) => Promise<unknown> };
+  params?: { parseAsync: (value: unknown) => Promise<unknown> };
 }
 
 export function validate(schemas: ValidationSchemas) {

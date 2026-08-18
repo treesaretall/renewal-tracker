@@ -38,8 +38,8 @@ describe('session', () => {
     });
 
     expect(allSessions).toHaveLength(1);
-    expect(allSessions[0].id).not.toBe(token);
-    expect(allSessions[0].id).toHaveLength(64); // SHA-256 hex digest
+    expect(allSessions[0]!.id).not.toBe(token);
+    expect(allSessions[0]!.id).toHaveLength(64); // SHA-256 hex digest
   });
 
   it('returns null for expired session and removes it', async () => {
@@ -50,7 +50,7 @@ describe('session', () => {
       where: { userId: testUserId },
     });
     await db.session.update({
-      where: { id: allSessions[0].id },
+      where: { id: allSessions[0]!.id },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 
