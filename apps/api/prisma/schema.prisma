@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id               String             @id @default(cuid())
+  email            String             @unique
+  passwordHash     String
+  createdAt        DateTime           @default(now())
+  sessions         Session[]
+  items            RenewalItem[]
+  settings         ReminderSettings?
+  categoryLeadTimes CategoryLeadTime[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ReminderSettings {
+  userId              String @unique
+  defaultLeadTimeDays Int    @default(30)
+  weekStartsOn        Int    @default(0)
+  dateFormat          String @default("MM/dd/yyyy")
+  user                User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId])
+}
+
+model CategoryLeadTime {
+  userId       String
+  category     String
+  leadTimeDays Int
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+}
+
+model RenewalItem {
+  id                   String          @id @default(cuid())
+  userId               String
+  name                 String
+  category             String
+  provider             String?
+  // Date-only values stored as YYYY-MM-DD strings to avoid time zone drift (see CLAUDE.md)
+  dueDate              String
+  costCents            Int?
+  currency             String          @default("USD")
+  recurrence           String          @default("none")
+  recurrenceMonths     Int?
+  leadTimeDaysOverride Int?
+  notes                String?
+  archivedAt           DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents            Document[]
+  events               RenewalEvent[]
+
+  @@index([userId, dueDate])
+  @@index([userId, category])
+}
+
+model Document {
+  id           String      @id @default(cuid())
+  itemId       String
+  storedName   String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime    @default(now())
+  item         RenewalItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model RenewalEvent {
+  id             String      @id @default(cuid())
+  itemId         String
+  // Date-only values stored as YYYY-MM-DD strings to avoid time zone drift (see CLAUDE.md)
+  periodDueDate  String
+  renewedAt      DateTime    @default(now())
+  costCents      Int?
+  notes          String?
+  item           RenewalItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
