@@ -1,2 +1,37 @@
 # Build and planning documents
 docs/BUILD_PLAN.md
+
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+coverage
+
+# System files
+.DS_Store
+*.local
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Database files
+*.db
+*.db-journal
+
+# API uploads
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# Testing
+playwright-report
+test-results
+
+# Storybook
+storybook-static
+
+# Generated files
+apps/api/generated
