@@ -16,6 +16,7 @@
     "db:reset": "prisma migrate reset --force"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.1.0",
     "@prisma/adapter-better-sqlite3": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@renewal/shared": "*",
