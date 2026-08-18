@@ -32,11 +32,22 @@ export function errorHandler(
   }
 
   // ZodError - map to VALIDATION_FAILED with 422 status
-  if (error instanceof ZodError) {
-    const details: ApiErrorDetail[] = error.issues.map((issue) => ({
-      path: issue.path.join("."),
-      message: issue.message,
-    }));
+  // Check both instanceof and name to handle zod version mismatches across workspaces
+  if (
+    error instanceof ZodError ||
+    (error &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "ZodError" &&
+      "issues" in error &&
+      Array.isArray(error.issues))
+  ) {
+    const details: ApiErrorDetail[] = (error as ZodError).issues.map(
+      (issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })
+    );
 
     res.status(422).json({
       code: API_ERROR_CODES.VALIDATION_FAILED,

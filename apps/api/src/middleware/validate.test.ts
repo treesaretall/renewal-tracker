@@ -142,7 +142,7 @@ describe("validate", () => {
 
     const idError = response.body.details.find((d: { path: string }) => d.path === "id");
     expect(idError).toBeDefined();
-    expect(idError.message).toContain("uuid");
+    expect(idError.message.toLowerCase()).toContain("uuid");
   });
 
   it("passes valid params to handler", async () => {
