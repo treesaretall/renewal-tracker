@@ -5,6 +5,7 @@ import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { authRouter } from "./routes/auth.js";
+import { itemsRouter } from "./routes/items/index.js";
 
 export function createApp() {
   const app = express();
@@ -22,6 +23,7 @@ export function createApp() {
   });
 
   app.use("/api/auth", authRouter);
+  app.use("/api/items", requireAuth, itemsRouter);
 
   app.get("/api/test/protected", requireAuth, (req, res) => {
     res.json({ userId: req.user!.id });
