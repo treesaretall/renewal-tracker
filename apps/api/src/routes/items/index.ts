@@ -103,11 +103,13 @@ itemsRouter.get(
     }
 
     // Case-insensitive search across name, provider, notes
+    // Note: SQLite doesn't support mode: "insensitive" in Prisma, so we rely on
+    // SQLite's default case-insensitive LIKE behavior for ASCII text
     if (query.search) {
       where.OR = [
-        { name: { contains: query.search, mode: "insensitive" } },
-        { provider: { contains: query.search, mode: "insensitive" } } as any,
-        { notes: { contains: query.search, mode: "insensitive" } } as any,
+        { name: { contains: query.search } },
+        { provider: { contains: query.search } } as any,
+        { notes: { contains: query.search } } as any,
       ];
     }
 
