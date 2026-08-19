@@ -3,13 +3,17 @@ import { z } from "zod";
 import {
   renewalItemListQuerySchema,
   renewalItemSchema,
+  renewalEventSchema,
   createRenewalItemSchema,
   updateRenewalItemSchema,
+  markRenewedSchema,
+  markRenewedResponseSchema,
   paginatedSchema,
   cuidSchema,
   todayIso,
   resolveLeadTimeDays,
   computeStatus,
+  nextDueDate,
   type RenewalItem,
   type ReminderSettings,
   type Category,
@@ -19,7 +23,7 @@ import { db } from "../../db.js";
 import { requireAuth } from "../../middleware/requireAuth.js";
 import { validate, type ValidatedRequest } from "../../middleware/validate.js";
 import { sendParsed } from "../../lib/respond.js";
-import { toRenewalItem } from "./serialize.js";
+import { toRenewalItem, toRenewalEvent } from "./serialize.js";
 import { ApiError } from "../../errors.js";
 import type { Response } from "express";
 import type { RenewalItemListQuery } from "@renewal/shared";
@@ -330,5 +334,109 @@ itemsRouter.post(
 
     const item = toRenewalItem(row);
     sendParsed(res, renewalItemSchema, item);
+  }
+);
+
+itemsRouter.post(
+  "/:id/renew",
+  requireAuth,
+  validate({
+    params: z.object({ id: cuidSchema }),
+    body: markRenewedSchema,
+  }),
+  async (req, res) => {
+    const { id } = req.params as { id: string };
+    const userId = req.user!.id;
+    const body = req.body as any;
+
+    // Use a transaction to ensure atomicity
+    const result = await db.$transaction(async (tx) => {
+      // 1. Load the owned item
+      const item = await tx.renewalItem.findUnique({
+        where: { id },
+      });
+
+      if (!item || item.userId !== userId) {
+        throw ApiError.notFound("Renewal item");
+      }
+
+      // 2. Create a RenewalEvent recording the period just completed
+      const event = await tx.renewalEvent.create({
+        data: {
+          itemId: id,
+          periodDueDate: item.dueDate,
+          renewedAt: new Date(body.renewedOn),
+          costCents: body.costCents,
+          notes: body.notes,
+        },
+      });
+
+      // 3. Compute the next due date
+      let computedNextDueDate: string | null;
+      if (body.nextDueDate) {
+        // Use explicit nextDueDate when provided
+        computedNextDueDate = body.nextDueDate;
+      } else {
+        // Otherwise compute from recurrence
+        const computed = nextDueDate({
+          dueDate: item.dueDate as any,
+          recurrence: item.recurrence as any,
+          recurrenceMonths: item.recurrenceMonths,
+        });
+        computedNextDueDate = computed;
+      }
+
+      // 4. If non-recurring and no explicit nextDueDate, archive instead of rolling forward
+      // A one-off renewal that's been dealt with is done - no need to track it further.
+      // This prevents "renew" from leaving non-recurring items in an active state with
+      // no meaningful due date.
+      let updatedItem;
+      if (item.recurrence === "none" && !body.nextDueDate) {
+        updatedItem = await tx.renewalItem.update({
+          where: { id },
+          data: { archivedAt: new Date() },
+        });
+      } else if (computedNextDueDate) {
+        // 5. Otherwise update dueDate
+        updatedItem = await tx.renewalItem.update({
+          where: { id },
+          data: { dueDate: computedNextDueDate },
+        });
+      } else {
+        // No next due date computed and not archived - shouldn't happen but handle it
+        updatedItem = item;
+      }
+
+      return { item: updatedItem, event };
+    });
+
+    const response = {
+      item: toRenewalItem(result.item),
+      event: toRenewalEvent(result.event),
+    };
+
+    sendParsed(res, markRenewedResponseSchema, response);
+  }
+);
+
+itemsRouter.get(
+  "/:id/history",
+  requireAuth,
+  validate({ params: z.object({ id: cuidSchema }) }),
+  async (req, res) => {
+    const { id } = req.params as { id: string };
+    const userId = req.user!.id;
+
+    // Verify ownership first
+    await findOwnedItemOrThrow(id, userId);
+
+    // Load events, newest first
+    const events = await db.renewalEvent.findMany({
+      where: { itemId: id },
+      orderBy: { renewedAt: "desc" },
+    });
+
+    const serializedEvents = events.map(toRenewalEvent);
+    sendParsed(res, z.array(renewalEventSchema), serializedEvents);
   }
 );

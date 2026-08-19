@@ -127,6 +127,18 @@ export const renewalItemListQuerySchema = z.object({
 
 export type RenewalItemListQuery = z.infer<typeof renewalItemListQuerySchema>;
 
+// RenewalEvent schema - records a completed renewal period
+export const renewalEventSchema = z.object({
+  id: cuidSchema,
+  itemId: cuidSchema,
+  periodDueDate: isoDateSchema,
+  renewedAt: z.string().datetime(),
+  costCents: costCentsSchema.optional(),
+  notes: z.string().max(2000).optional(),
+});
+
+export type RenewalEvent = z.infer<typeof renewalEventSchema>;
+
 // Body for the renew action
 export const markRenewedSchema = z.object({
   renewedOn: isoDateSchema,
@@ -136,3 +148,11 @@ export const markRenewedSchema = z.object({
 });
 
 export type MarkRenewed = z.infer<typeof markRenewedSchema>;
+
+// Response for the renew action
+export const markRenewedResponseSchema = z.object({
+  item: renewalItemSchema,
+  event: renewalEventSchema,
+});
+
+export type MarkRenewedResponse = z.infer<typeof markRenewedResponseSchema>;

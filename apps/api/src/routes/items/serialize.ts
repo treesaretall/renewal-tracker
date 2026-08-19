@@ -1,6 +1,6 @@
-import { renewalItemSchema, documentSchema } from "@renewal/shared";
+import { renewalItemSchema, renewalEventSchema, documentSchema } from "@renewal/shared";
 import type { RenewalItem as PrismaRenewalItem, Document as PrismaDocument, RenewalEvent as PrismaRenewalEvent } from "../../../generated/prisma/client.js";
-import type { RenewalItem, Document } from "@renewal/shared";
+import type { RenewalItem, RenewalEvent, Document } from "@renewal/shared";
 
 export function toRenewalItem(row: PrismaRenewalItem): RenewalItem {
   const candidate = {
@@ -23,8 +23,17 @@ export function toRenewalItem(row: PrismaRenewalItem): RenewalItem {
   return renewalItemSchema.parse(candidate);
 }
 
-export function toRenewalEvent(_row: PrismaRenewalEvent): unknown {
-  throw new Error("toRenewalEvent not yet implemented");
+export function toRenewalEvent(row: PrismaRenewalEvent): RenewalEvent {
+  const candidate = {
+    id: row.id,
+    itemId: row.itemId,
+    periodDueDate: row.periodDueDate,
+    renewedAt: row.renewedAt.toISOString(),
+    costCents: row.costCents ?? undefined,
+    notes: row.notes ?? undefined,
+  };
+
+  return renewalEventSchema.parse(candidate);
 }
 
 export function toDocument(row: PrismaDocument): Document {
