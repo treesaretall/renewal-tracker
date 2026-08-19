@@ -9,9 +9,15 @@ export interface TestClient extends ReturnType<typeof request> {
 
 export interface AuthenticatedTestClient {
   get: (url: string) => Promise<request.Response>;
-  post: (url: string) => Promise<request.Response>;
-  put: (url: string) => Promise<request.Response>;
-  patch: (url: string) => Promise<request.Response>;
+  post: (url: string) => {
+    send: (body: any) => Promise<request.Response>;
+  };
+  put: (url: string) => {
+    send: (body: any) => Promise<request.Response>;
+  };
+  patch: (url: string) => {
+    send: (body: any) => Promise<request.Response>;
+  };
   delete: (url: string) => Promise<request.Response>;
 }
 
@@ -22,16 +28,27 @@ export function buildTestClient(): TestClient {
     const makeAuthenticatedRequest = async (
       method: 'get' | 'post' | 'put' | 'patch' | 'delete',
       url: string,
+      body?: any,
     ) => {
       const { token } = await createSession(user.id);
-      return agent[method](url).set('Cookie', `${SESSION_COOKIE_NAME}=${token}`);
+      const req = agent[method](url).set('Cookie', `${SESSION_COOKIE_NAME}=${token}`);
+      if (body !== undefined && (method === 'post' || method === 'put' || method === 'patch')) {
+        return req.send(body);
+      }
+      return req;
     };
 
     return {
       get: (url) => makeAuthenticatedRequest('get', url),
-      post: (url) => makeAuthenticatedRequest('post', url),
-      put: (url) => makeAuthenticatedRequest('put', url),
-      patch: (url) => makeAuthenticatedRequest('patch', url),
+      post: (url) => ({
+        send: (body) => makeAuthenticatedRequest('post', url, body),
+      }),
+      put: (url) => ({
+        send: (body) => makeAuthenticatedRequest('put', url, body),
+      }),
+      patch: (url) => ({
+        send: (body) => makeAuthenticatedRequest('patch', url, body),
+      }),
       delete: (url) => makeAuthenticatedRequest('delete', url),
     };
   };

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import {
   renewalItemListQuerySchema,
   renewalItemSchema,
@@ -199,7 +200,7 @@ itemsRouter.get(
 itemsRouter.get(
   "/:id",
   requireAuth,
-  validate({ params: cuidSchema.transform((id) => ({ id })) }),
+  validate({ params: z.object({ id: cuidSchema }) }),
   async (req, res) => {
     const { id } = req.params as { id: string };
     const userId = req.user!.id;
@@ -244,7 +245,7 @@ itemsRouter.patch(
   "/:id",
   requireAuth,
   validate({
-    params: cuidSchema.transform((id) => ({ id })),
+    params: z.object({ id: cuidSchema }),
     body: updateRenewalItemSchema,
   }),
   async (req, res) => {
@@ -293,7 +294,7 @@ itemsRouter.delete("/:id", requireAuth, async (req, res) => {
 itemsRouter.post(
   "/:id/archive",
   requireAuth,
-  validate({ params: cuidSchema.transform((id) => ({ id })) }),
+  validate({ params: z.object({ id: cuidSchema }) }),
   async (req, res) => {
     const { id } = req.params as { id: string };
     const userId = req.user!.id;
@@ -314,7 +315,7 @@ itemsRouter.post(
 itemsRouter.post(
   "/:id/unarchive",
   requireAuth,
-  validate({ params: cuidSchema.transform((id) => ({ id })) }),
+  validate({ params: z.object({ id: cuidSchema }) }),
   async (req, res) => {
     const { id } = req.params as { id: string };
     const userId = req.user!.id;
