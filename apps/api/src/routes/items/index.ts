@@ -2,7 +2,10 @@ import { Router } from "express";
 import {
   renewalItemListQuerySchema,
   renewalItemSchema,
+  createRenewalItemSchema,
+  updateRenewalItemSchema,
   paginatedSchema,
+  cuidSchema,
   todayIso,
   resolveLeadTimeDays,
   computeStatus,
@@ -16,10 +19,33 @@ import { requireAuth } from "../../middleware/requireAuth.js";
 import { validate, type ValidatedRequest } from "../../middleware/validate.js";
 import { sendParsed } from "../../lib/respond.js";
 import { toRenewalItem } from "./serialize.js";
+import { ApiError } from "../../errors.js";
 import type { Response } from "express";
 import type { RenewalItemListQuery } from "@renewal/shared";
+import type { RenewalItem as PrismaRenewalItem } from "../../../generated/prisma/client.js";
 
 export const itemsRouter = Router();
+
+/**
+ * Find an item by ID and verify ownership. Returns 404 (not 403) when the item
+ * doesn't exist or belongs to another user, so the API doesn't leak the existence
+ * of other people's IDs. This is the single enforcement point for ownership checks
+ * across all item operations.
+ */
+async function findOwnedItemOrThrow(
+  itemId: string,
+  userId: string
+): Promise<PrismaRenewalItem> {
+  const item = await db.renewalItem.findUnique({
+    where: { id: itemId },
+  });
+
+  if (!item || item.userId !== userId) {
+    throw ApiError.notFound("Renewal item");
+  }
+
+  return item;
+}
 
 /**
  * Load reminder settings for a user from the database.
@@ -167,5 +193,141 @@ itemsRouter.get(
       data,
       total,
     });
+  }
+);
+
+itemsRouter.get(
+  "/:id",
+  requireAuth,
+  validate({ params: cuidSchema.transform((id) => ({ id })) }),
+  async (req, res) => {
+    const { id } = req.params as { id: string };
+    const userId = req.user!.id;
+
+    const row = await findOwnedItemOrThrow(id, userId);
+    const item = toRenewalItem(row);
+
+    sendParsed(res, renewalItemSchema, item);
+  }
+);
+
+itemsRouter.post(
+  "/",
+  requireAuth,
+  validate({ body: createRenewalItemSchema }),
+  async (req, res) => {
+    const userId = req.user!.id;
+    const body = req.body as any;
+
+    const row = await db.renewalItem.create({
+      data: {
+        userId,
+        name: body.name,
+        category: body.category,
+        provider: body.provider,
+        dueDate: body.dueDate,
+        costCents: body.costCents,
+        currency: body.currency,
+        recurrence: body.recurrence,
+        recurrenceMonths: body.recurrenceMonths,
+        leadTimeDaysOverride: body.leadTimeDaysOverride,
+        notes: body.notes,
+      },
+    });
+
+    const item = toRenewalItem(row);
+    sendParsed(res, renewalItemSchema, item, 201);
+  }
+);
+
+itemsRouter.patch(
+  "/:id",
+  requireAuth,
+  validate({
+    params: cuidSchema.transform((id) => ({ id })),
+    body: updateRenewalItemSchema,
+  }),
+  async (req, res) => {
+    const { id } = req.params as { id: string };
+    const userId = req.user!.id;
+    const body = req.body as any;
+
+    // Verify ownership first
+    await findOwnedItemOrThrow(id, userId);
+
+    // Build update data with recurrence logic:
+    // When recurrence changes to "none" or a fixed interval, null out recurrenceMonths
+    const data: any = { ...body };
+    if (body.recurrence !== undefined && body.recurrence !== "custom") {
+      data.recurrenceMonths = null;
+    }
+
+    const row = await db.renewalItem.update({
+      where: { id },
+      data,
+    });
+
+    const item = toRenewalItem(row);
+    sendParsed(res, renewalItemSchema, item);
+  }
+);
+
+itemsRouter.delete("/:id", requireAuth, async (req, res) => {
+  const { id } = req.params as { id: string };
+  const userId = req.user!.id;
+
+  // Verify ownership first
+  await findOwnedItemOrThrow(id, userId);
+
+  // Hard delete - cascades to documents and events via Prisma schema
+  await db.renewalItem.delete({
+    where: { id },
+  });
+
+  res.status(204).send();
+});
+
+// Archive vs delete: Archive preserves history for items you want to reference later
+// (e.g., a lapsed policy you might renew, or historical cost tracking).
+// Delete is for typos, test data, or entries you never want to see again.
+itemsRouter.post(
+  "/:id/archive",
+  requireAuth,
+  validate({ params: cuidSchema.transform((id) => ({ id })) }),
+  async (req, res) => {
+    const { id } = req.params as { id: string };
+    const userId = req.user!.id;
+
+    // Verify ownership first
+    await findOwnedItemOrThrow(id, userId);
+
+    const row = await db.renewalItem.update({
+      where: { id },
+      data: { archivedAt: new Date() },
+    });
+
+    const item = toRenewalItem(row);
+    sendParsed(res, renewalItemSchema, item);
+  }
+);
+
+itemsRouter.post(
+  "/:id/unarchive",
+  requireAuth,
+  validate({ params: cuidSchema.transform((id) => ({ id })) }),
+  async (req, res) => {
+    const { id } = req.params as { id: string };
+    const userId = req.user!.id;
+
+    // Verify ownership first
+    await findOwnedItemOrThrow(id, userId);
+
+    const row = await db.renewalItem.update({
+      where: { id },
+      data: { archivedAt: null },
+    });
+
+    const item = toRenewalItem(row);
+    sendParsed(res, renewalItemSchema, item);
   }
 );
