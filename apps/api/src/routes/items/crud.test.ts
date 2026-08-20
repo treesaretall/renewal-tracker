@@ -1,9 +1,14 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { API_ERROR_CODES, todayIso, addDaysIso } from "@renewal/shared";
 import { db } from "../../db.js";
 import { buildTestClient } from "../../test/client.js";
 import { createTestUser, createTestSettings } from "../../test/factories.js";
+import { readdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { User } from "../../../generated/prisma/client.js";
+
+// Minimal valid PDF (7 bytes) - just the header
+const TINY_PDF = Buffer.from("%PDF-1.", "utf-8");
 
 describe("POST /api/items", () => {
   let user: User;
@@ -374,6 +379,49 @@ describe("DELETE /api/items/:id", () => {
     expect(res.status).toBe(404);
     expect(res.body.code).toBe(API_ERROR_CODES.NOT_FOUND);
   });
+
+  it("removes associated files from disk when item is deleted", async () => {
+    const client = buildTestClient();
+
+    // Upload two documents
+    const doc1Res = await client
+      .asUser(user)
+      .post(`/api/items/${itemId}/documents`)
+      .attach("file", TINY_PDF, "contract.pdf");
+
+    const doc2Res = await client
+      .asUser(user)
+      .post(`/api/items/${itemId}/documents`)
+      .attach("file", TINY_PDF, "invoice.pdf");
+
+    expect(doc1Res.status).toBe(201);
+    expect(doc2Res.status).toBe(201);
+
+    // Get the stored filenames
+    const doc1 = await db.document.findUnique({
+      where: { id: doc1Res.body.id },
+    });
+    const doc2 = await db.document.findUnique({
+      where: { id: doc2Res.body.id },
+    });
+
+    const storedName1 = doc1!.storedName;
+    const storedName2 = doc2!.storedName;
+
+    // Verify files exist on disk
+    const filesBefore = await readdir("apps/api/uploads");
+    expect(filesBefore).toContain(storedName1);
+    expect(filesBefore).toContain(storedName2);
+
+    // Delete the item
+    const deleteRes = await client.asUser(user).delete(`/api/items/${itemId}`);
+    expect(deleteRes.status).toBe(204);
+
+    // Verify files are removed from disk
+    const filesAfter = await readdir("apps/api/uploads");
+    expect(filesAfter).not.toContain(storedName1);
+    expect(filesAfter).not.toContain(storedName2);
+  });
 });
 
 describe("POST /api/items/:id/archive and /api/items/:id/unarchive", () => {
@@ -395,6 +443,25 @@ describe("POST /api/items/:id/archive and /api/items/:id/unarchive", () => {
     });
 
     itemId = createRes.body.id;
+  });
+
+  afterEach(async () => {
+    // Clean up uploads directory after each test
+    const uploadsDir = "apps/api/uploads";
+    try {
+      const files = await readdir(uploadsDir);
+      await Promise.all(
+        files
+          .filter((file) => file !== ".gitkeep")
+          .map((file) =>
+            import("node:fs/promises").then((fs) =>
+              fs.unlink(join(uploadsDir, file)).catch(() => {})
+            )
+          )
+      );
+    } catch {
+      // Directory might not exist, that's fine
+    }
   });
 
   it("archive sets archivedAt and item drops out of default list, unarchive restores it", async () => {
@@ -481,5 +548,46 @@ describe("POST /api/items/:id/archive and /api/items/:id/unarchive", () => {
 
     expect(res.status).toBe(404);
     expect(res.body.code).toBe(API_ERROR_CODES.NOT_FOUND);
+  });
+
+  it("keeps associated files on disk when item is archived (not deleted)", async () => {
+    const client = buildTestClient();
+
+    // Upload a document
+    const docRes = await client
+      .asUser(user)
+      .post(`/api/items/${itemId}/documents`)
+      .attach("file", TINY_PDF, "contract.pdf");
+
+    expect(docRes.status).toBe(201);
+
+    // Get the stored filename
+    const doc = await db.document.findUnique({
+      where: { id: docRes.body.id },
+    });
+
+    const storedName = doc!.storedName;
+
+    // Verify file exists on disk
+    const filesBefore = await readdir("apps/api/uploads");
+    expect(filesBefore).toContain(storedName);
+
+    // Archive the item
+    const archiveRes = await client
+      .asUser(user)
+      .post(`/api/items/${itemId}/archive`)
+      .send({});
+
+    expect(archiveRes.status).toBe(200);
+
+    // Verify file still exists on disk (archiving does NOT delete files)
+    const filesAfter = await readdir("apps/api/uploads");
+    expect(filesAfter).toContain(storedName);
+
+    // Verify document row still exists
+    const docAfter = await db.document.findUnique({
+      where: { id: docRes.body.id },
+    });
+    expect(docAfter).toBeDefined();
   });
 });

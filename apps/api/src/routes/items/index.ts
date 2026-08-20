@@ -26,6 +26,7 @@ import { sendParsed } from "../../lib/respond.js";
 import { toRenewalItem, toRenewalEvent } from "./serialize.js";
 import { ApiError } from "../../errors.js";
 import { documentsRouter } from "./documents.js";
+import { deleteItemAndFiles } from "../../services/deleteItem.js";
 import type { Response } from "express";
 import type { RenewalItemListQuery } from "@renewal/shared";
 import type { RenewalItem as PrismaRenewalItem } from "../../../generated/prisma/client.js";
@@ -285,13 +286,8 @@ itemsRouter.delete("/:id", requireAuth, async (req, res) => {
   const { id } = req.params as { id: string };
   const userId = req.user!.id;
 
-  // Verify ownership first
-  await findOwnedItemOrThrow(id, userId);
-
-  // Hard delete - cascades to documents and events via Prisma schema
-  await db.renewalItem.delete({
-    where: { id },
-  });
+  // Hard delete - removes item, cascaded DB rows, and all associated files
+  await deleteItemAndFiles(id, userId);
 
   res.status(204).send();
 });
@@ -299,6 +295,9 @@ itemsRouter.delete("/:id", requireAuth, async (req, res) => {
 // Archive vs delete: Archive preserves history for items you want to reference later
 // (e.g., a lapsed policy you might renew, or historical cost tracking).
 // Delete is for typos, test data, or entries you never want to see again.
+//
+// IMPORTANT: Archiving does NOT delete document files. Archived items keep their documents
+// so you can reference them later. Only hard deletion (DELETE /api/items/:id) removes files.
 itemsRouter.post(
   "/:id/archive",
   requireAuth,
