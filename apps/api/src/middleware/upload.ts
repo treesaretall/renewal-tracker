@@ -29,7 +29,10 @@ const fileFilter = (
   if (ALLOWED_UPLOAD_MIME_TYPES.includes(file.mimetype as never)) {
     cb(null, true);
   } else {
-    cb(null, false);
+    // Reject with an error so we can detect it was explicitly rejected
+    // vs no file being sent at all
+    const error = new Error("UNSUPPORTED_FILE_TYPE");
+    cb(error as any);
   }
 };
 
@@ -53,6 +56,15 @@ export const uploadSingle = (fieldName: string) => {
 
     upload(req, res, (err: unknown) => {
       if (err) {
+        // Check for our custom file type rejection
+        if (err instanceof Error && err.message === "UNSUPPORTED_FILE_TYPE") {
+          return next(
+            ApiError.unsupportedMediaType(
+              `File type not allowed. Accepted types: ${ALLOWED_UPLOAD_MIME_TYPES.join(", ")}`
+            )
+          );
+        }
+
         // Multer error handling
         if (err instanceof multer.MulterError) {
           if (err.code === "LIMIT_FILE_SIZE") {
@@ -71,17 +83,8 @@ export const uploadSingle = (fieldName: string) => {
         return next(err);
       }
 
-      // Check if file was rejected by fileFilter
-      if (!req.file && req.body && Object.keys(req.body).length === 0) {
-        // This heuristic detects when multer rejected the file silently
-        // Note: this is not foolproof, but catches most cases
-        return next(
-          ApiError.unsupportedMediaType(
-            `File type not allowed. Accepted types: ${ALLOWED_UPLOAD_MIME_TYPES.join(", ")}`
-          )
-        );
-      }
-
+      // If we get here with no error, multer processed successfully
+      // The route handler will check req.file and reject if it's missing
       next();
     });
   };

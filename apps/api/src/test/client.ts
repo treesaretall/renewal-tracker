@@ -11,6 +11,7 @@ export interface AuthenticatedTestClient {
   get: (url: string) => Promise<request.Response>;
   post: (url: string) => {
     send: (body: any) => Promise<request.Response>;
+    attach: (field: string, file: Buffer, filename: string) => Promise<request.Response>;
   };
   put: (url: string) => {
     send: (body: any) => Promise<request.Response>;
@@ -42,6 +43,13 @@ export function buildTestClient(): TestClient {
       get: (url) => makeAuthenticatedRequest('get', url),
       post: (url) => ({
         send: (body) => makeAuthenticatedRequest('post', url, body),
+        attach: async (field: string, file: Buffer, filename: string) => {
+          const { token } = await createSession(user.id);
+          return agent
+            .post(url)
+            .set('Cookie', `${SESSION_COOKIE_NAME}=${token}`)
+            .attach(field, file, filename);
+        },
       }),
       put: (url) => ({
         send: (body) => makeAuthenticatedRequest('put', url, body),
