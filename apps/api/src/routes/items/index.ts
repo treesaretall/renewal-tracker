@@ -25,11 +25,15 @@ import { validate, type ValidatedRequest } from "../../middleware/validate.js";
 import { sendParsed } from "../../lib/respond.js";
 import { toRenewalItem, toRenewalEvent } from "./serialize.js";
 import { ApiError } from "../../errors.js";
+import { documentsRouter } from "./documents.js";
 import type { Response } from "express";
 import type { RenewalItemListQuery } from "@renewal/shared";
 import type { RenewalItem as PrismaRenewalItem } from "../../../generated/prisma/client.js";
 
 export const itemsRouter = Router();
+
+// Mount documents router at /api/items/:itemId/documents
+itemsRouter.use("/:itemId/documents", documentsRouter);
 
 /**
  * Find an item by ID and verify ownership. Returns 404 (not 403) when the item

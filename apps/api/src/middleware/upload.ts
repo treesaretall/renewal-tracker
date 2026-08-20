@@ -2,18 +2,10 @@ import multer, { type FileFilterCallback } from "multer";
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { unlink } from "node:fs/promises";
+import { ALLOWED_UPLOAD_MIME_TYPES } from "@renewal/shared";
 import { env } from "../env.js";
 import { ApiError } from "../errors.js";
 import type { Request, Response, NextFunction } from "express";
-
-// Allowed MIME types for document uploads
-const ALLOWED_UPLOAD_MIME_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-] as const;
 
 const MAX_UPLOAD_BYTES = env.MAX_UPLOAD_MB * 1024 * 1024;
 
