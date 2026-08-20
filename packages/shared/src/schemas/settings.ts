@@ -32,13 +32,23 @@ export const reminderSettingsSchema = z.object({
 export type ReminderSettings = z.infer<typeof reminderSettingsSchema>;
 
 // Update schema - deep partial with at least one key required
+// For categoryLeadTimes, we use a partial object (not record) to allow
+// updating only specific categories rather than requiring all categories.
 export const updateReminderSettingsSchema = z
   .object({
     defaultLeadTimeDays: leadTimeDaysSchema.optional(),
     weekStartsOn: weekStartsOnSchema.optional(),
     dateFormat: dateFormatSchema.optional(),
     categoryLeadTimes: z
-      .record(categorySchema, z.union([leadTimeDaysSchema, z.null()]))
+      .object({
+        insurance: z.union([leadTimeDaysSchema, z.null()]).optional(),
+        registration: z.union([leadTimeDaysSchema, z.null()]).optional(),
+        license: z.union([leadTimeDaysSchema, z.null()]).optional(),
+        warranty: z.union([leadTimeDaysSchema, z.null()]).optional(),
+        subscription: z.union([leadTimeDaysSchema, z.null()]).optional(),
+        other: z.union([leadTimeDaysSchema, z.null()]).optional(),
+      })
+      .strict()
       .optional(),
   })
   .superRefine((data, ctx) => {
