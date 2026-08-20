@@ -35,3 +35,4 @@ storybook-static
 
 # Generated files
 apps/api/generated
+*.tsbuildinfo
