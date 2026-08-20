@@ -16,7 +16,6 @@ import {
   nextDueDate,
   type RenewalItem,
   type ReminderSettings,
-  type Category,
   type RenewalStatus,
 } from "@renewal/shared";
 import { db } from "../../db.js";
@@ -27,6 +26,7 @@ import { toRenewalItem, toRenewalEvent } from "./serialize.js";
 import { ApiError } from "../../errors.js";
 import { documentsRouter } from "./documents.js";
 import { deleteItemAndFiles } from "../../services/deleteItem.js";
+import { getSettingsForUser } from "../../services/settings.js";
 import type { Response } from "express";
 import type { RenewalItemListQuery } from "@renewal/shared";
 import type { RenewalItem as PrismaRenewalItem } from "../../../generated/prisma/client.js";
@@ -55,40 +55,6 @@ async function findOwnedItemOrThrow(
   }
 
   return item;
-}
-
-/**
- * Load reminder settings for a user from the database.
- * Assembles the categoryLeadTimes map from separate CategoryLeadTime rows.
- */
-async function loadSettings(userId: string): Promise<ReminderSettings> {
-  const settings = await db.reminderSettings.findUniqueOrThrow({
-    where: { userId },
-  });
-
-  const categoryLeadTimes = await db.categoryLeadTime.findMany({
-    where: { userId },
-  });
-
-  const categoryLeadTimesMap: Record<Category, number | null> = {
-    insurance: null,
-    registration: null,
-    license: null,
-    warranty: null,
-    subscription: null,
-    other: null,
-  };
-
-  for (const entry of categoryLeadTimes) {
-    categoryLeadTimesMap[entry.category as Category] = entry.leadTimeDays;
-  }
-
-  return {
-    defaultLeadTimeDays: settings.defaultLeadTimeDays,
-    weekStartsOn: settings.weekStartsOn as 0 | 1,
-    dateFormat: settings.dateFormat as "yyyy-MM-dd" | "dd/MM/yyyy" | "MM/dd/yyyy",
-    categoryLeadTimes: categoryLeadTimesMap,
-  };
 }
 
 interface ItemWithStatus extends RenewalItem {
@@ -165,7 +131,7 @@ itemsRouter.get(
     ]);
 
     // Load settings once for all items
-    const settings = await loadSettings(userId);
+    const settings = await getSettingsForUser(userId);
 
     // Map rows to API shape and compute status for each
     // STATUS FILTERING TRADE-OFF: Status is derived via computeStatus() and cannot
