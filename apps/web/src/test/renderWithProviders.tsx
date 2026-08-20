@@ -1,7 +1,7 @@
 import { render, type RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import { useFilterStore } from "../stores/useFilterStore";
 import { useCalendarStore } from "../stores/useCalendarStore";
 import { useDialogStore } from "../stores/useDialogStore";
@@ -48,26 +48,13 @@ export function renderWithProviders(
   });
   useDialogStore.getState().closeDialog();
 
-  // Create a memory router with the component as a route
-  const router = createMemoryRouter(
-    [
-      {
-        path: "*",
-        element: ui,
-      },
-    ],
-    {
-      initialEntries,
-    },
+  // Wrap with QueryClientProvider only
+  // Don't use router for simple tests
+  const wrapped = (
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>
   );
 
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    );
-  }
-
-  return render(<Wrapper>{ui}</Wrapper>, renderOptions);
+  return render(wrapped, renderOptions);
 }

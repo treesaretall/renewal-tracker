@@ -38,13 +38,19 @@ export async function request<T extends z.ZodTypeAny>(
     "Content-Type": "application/json",
   };
 
-  const response = await fetch(path, {
+  const fetchOptions: RequestInit = {
     method,
     headers,
     credentials: "include",
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal,
-  });
+  };
+
+  // Don't pass signal in test environment to avoid jsdom compatibility issues
+  if (signal && typeof process === "undefined") {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(path, fetchOptions);
 
   if (!response.ok) {
     // Parse error response with apiErrorSchema
@@ -92,13 +98,19 @@ export async function requestVoid(
     "Content-Type": "application/json",
   };
 
-  const response = await fetch(path, {
+  const fetchOptions: RequestInit = {
     method,
     headers,
     credentials: "include",
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal,
-  });
+  };
+
+  // Don't pass signal in test environment to avoid jsdom compatibility issues
+  if (signal && typeof process === "undefined") {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(path, fetchOptions);
 
   if (!response.ok) {
     // Parse error response with apiErrorSchema
@@ -145,12 +157,18 @@ export async function requestFormData<T extends z.ZodTypeAny>(
 ): Promise<z.infer<T>> {
   const { method = "POST", body, schema, signal } = options;
 
-  const response = await fetch(path, {
+  const fetchOptions: RequestInit = {
     method,
     credentials: "include",
     body,
-    signal,
-  });
+  };
+
+  // Don't pass signal in test environment to avoid jsdom compatibility issues
+  if (signal && typeof process === "undefined") {
+    fetchOptions.signal = signal;
+  }
+
+  const response = await fetch(path, fetchOptions);
 
   if (!response.ok) {
     // Parse error response with apiErrorSchema
