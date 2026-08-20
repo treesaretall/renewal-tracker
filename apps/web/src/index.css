@@ -1,21 +1,81 @@
-:root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Oxygen, Ubuntu, Cantarell, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
+
+@theme {
+  /* Status colors: deuteranopia-safe palette using lightness + hue variation */
+  /* Overdue: Rose/red tones (high urgency, darkest) */
+  --color-overdue-50: #fff1f2;
+  --color-overdue-500: #f43f5e;
+  --color-overdue-700: #be123c;
+
+  /* Due soon: Amber/orange tones (medium urgency) */
+  --color-due-soon-50: #fffbeb;
+  --color-due-soon-500: #f59e0b;
+  --color-due-soon-700: #b45309;
+
+  /* Upcoming: Sky/blue tones (low urgency, lighter) */
+  --color-upcoming-50: #f0f9ff;
+  --color-upcoming-500: #0ea5e9;
+  --color-upcoming-700: #0369a1;
+
+  /* Surface colors */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-border: #e2e8f0;
+
+  /* Foreground colors */
+  --color-fg: #0f172a;
+  --color-fg-muted: #64748b;
+
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Borders */
+  --radius-card: 0.5rem;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Dark mode: respects OS preference (no theme toggle yet) */
+@media (prefers-color-scheme: dark) {
+  @theme {
+    /* Status colors adjusted for dark mode */
+    --color-overdue-50: #4c0519;
+    --color-overdue-500: #fb7185;
+    --color-overdue-700: #fda4af;
+
+    --color-due-soon-50: #451a03;
+    --color-due-soon-500: #fbbf24;
+    --color-due-soon-700: #fcd34d;
+
+    --color-upcoming-50: #082f49;
+    --color-upcoming-500: #38bdf8;
+    --color-upcoming-700: #7dd3fc;
+
+    /* Surface colors */
+    --color-surface: #0f172a;
+    --color-surface-muted: #1e293b;
+    --color-border: #334155;
+
+    /* Foreground colors */
+    --color-fg: #f1f5f9;
+    --color-fg-muted: #94a3b8;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-}
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--color-surface);
+    color: var(--color-fg);
+  }
 
-#root {
-  padding: 2rem;
+  /* Visible focus ring for keyboard navigation (critical for forms/grids) */
+  :focus-visible {
+    outline: 2px solid var(--color-upcoming-500);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
 }
